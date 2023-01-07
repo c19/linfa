@@ -241,12 +241,15 @@ impl<F: Float, R: Rng + Clone, DA: Data<Elem = F>, T, D: Distance<F>>
 
         let n_runs = self.n_runs();
 
-        for _ in 0..n_runs {
+        for n in 0..n_runs {
+            println!("{n} run");
             let mut centroids =
                 self.init_method()
                     .run(self.dist_fn(), self.n_clusters(), observations, &mut rng);
+            println!("init completed");
             let mut n_iter = 0;
             let inertia = loop {
+                println!("{n_iter} iter");
                 update_memberships_and_dists(
                     self.dist_fn(),
                     &centroids,
@@ -254,12 +257,15 @@ impl<F: Float, R: Rng + Clone, DA: Data<Elem = F>, T, D: Distance<F>>
                     &mut memberships,
                     &mut dists,
                 );
+                println!("membership updated");
                 let new_centroids = compute_centroids(&centroids, &observations, &memberships);
+                println!("centroids computed");
                 let distance = self
                     .dist_fn()
                     .distance(centroids.view(), new_centroids.view());
                 centroids = new_centroids;
                 n_iter += 1;
+                println!("centroids distance change: {distance}");
                 if distance < self.tolerance() || n_iter == self.max_n_iterations() {
                     break dists.sum();
                 }
