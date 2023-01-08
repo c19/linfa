@@ -97,13 +97,8 @@ impl<F: Float> Distance<F> for LpDist<F> {
 
 /// Earth mover's distance or Wasserstein metric. https://en.wikipedia.org/wiki/Earth_mover%27s_distance
 #[derive(Debug, Clone, PartialEq)]
-pub struct EMD<F: Float>(pub F);
-impl<F: Float> EMD<F> {
-    pub fn new(p: F) -> Self {
-        EMD(p)
-    }
-}
-impl<F: Float> Distance<F> for EMD<F> {
+pub struct EMD;
+impl<F: Float> Distance<F> for EMD {
     #[inline]
     fn distance<D: Dimension>(&self, a: ArrayView<F, D>, b: ArrayView<F, D>) -> F {
         let mut u64_a: Vec<u64> = a

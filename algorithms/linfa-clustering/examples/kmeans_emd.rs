@@ -36,8 +36,7 @@ fn main() {
 
     // Configure our training algorithm
     let n_clusters = 3;
-    let dist = EMD::new(0.0);
-    let model = KMeans::params_with(n_clusters, rng, dist)
+    let model = KMeans::params_with(n_clusters, rng, EMD)
         .max_n_iterations(200)
         .tolerance(1e-5)
         .fit(&dataset)
