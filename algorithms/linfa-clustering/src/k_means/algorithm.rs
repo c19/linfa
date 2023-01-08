@@ -2,8 +2,8 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 
 use crate::k_means::{KMeansParams, KMeansValidParams};
-use crate::IncrKMeansError;
 use crate::{k_means::errors::KMeansError, KMeansInit};
+use crate::{IncrKMeansError, ProgressType};
 use linfa::{prelude::*, DatasetBase, Float};
 use linfa_nn::distance::{Distance, L2Dist};
 use ndarray::{Array1, Array2, ArrayBase, Axis, Data, DataMut, Ix1, Ix2, Zip};
@@ -182,18 +182,18 @@ pub struct KMeans<F: Float, D: Distance<F>> {
     dist_fn: D,
 }
 
-impl<F: Float> KMeans<F, L2Dist> {
-    pub fn params(nclusters: usize) -> KMeansParams<F, Xoshiro256Plus, L2Dist> {
+impl<'a, F: Float> KMeans<F, L2Dist> {
+    pub fn params(nclusters: usize) -> KMeansParams<'a, F, Xoshiro256Plus, L2Dist> {
         KMeansParams::new(nclusters, Xoshiro256Plus::seed_from_u64(42), L2Dist)
     }
 
-    pub fn params_with_rng<R: Rng>(nclusters: usize, rng: R) -> KMeansParams<F, R, L2Dist> {
+    pub fn params_with_rng<R: Rng>(nclusters: usize, rng: R) -> KMeansParams<'a, F, R, L2Dist> {
         KMeansParams::new(nclusters, rng, L2Dist)
     }
 }
 
-impl<F: Float, D: Distance<F>> KMeans<F, D> {
-    pub fn params_with<R: Rng>(nclusters: usize, rng: R, dist_fn: D) -> KMeansParams<F, R, D> {
+impl<'a, F: Float, D: Distance<F>> KMeans<F, D> {
+    pub fn params_with<R: Rng>(nclusters: usize, rng: R, dist_fn: D) -> KMeansParams<'a, F, R, D> {
         KMeansParams::new(nclusters, rng, dist_fn)
     }
 
@@ -216,8 +216,8 @@ impl<F: Float, D: Distance<F>> KMeans<F, D> {
     }
 }
 
-impl<F: Float, R: Rng + Clone, DA: Data<Elem = F>, T, D: Distance<F>>
-    Fit<ArrayBase<DA, Ix2>, T, KMeansError> for KMeansValidParams<F, R, D>
+impl<'a, F: Float, R: Rng + Clone, DA: Data<Elem = F>, T, D: Distance<F>>
+    Fit<ArrayBase<DA, Ix2>, T, KMeansError> for KMeansValidParams<'a, F, R, D>
 {
     type Object = KMeans<F, D>;
 
@@ -247,6 +247,9 @@ impl<F: Float, R: Rng + Clone, DA: Data<Elem = F>, T, D: Distance<F>>
                 self.init_method()
                     .run(self.dist_fn(), self.n_clusters(), observations, &mut rng);
             println!("init completed");
+            if let Some(notify) = self.progress_notify {
+                notify(ProgressType::InitDone);
+            }
             let mut n_iter = 0;
             let inertia = loop {
                 println!("{n_iter} iter");
@@ -265,8 +268,11 @@ impl<F: Float, R: Rng + Clone, DA: Data<Elem = F>, T, D: Distance<F>>
                     .distance(centroids.view(), new_centroids.view());
                 centroids = new_centroids;
                 n_iter += 1;
+                if let Some(notify) = self.progress_notify {
+                    notify(ProgressType::IterationDone(n_iter));
+                }
                 println!("centroids distance change: {distance}");
-                if distance < self.tolerance() || n_iter == self.max_n_iterations() {
+                if distance < self.tolerance() || n_iter == self.max_n_iterations() as usize {
                     break dists.sum();
                 }
             };
@@ -300,7 +306,7 @@ impl<F: Float, R: Rng + Clone, DA: Data<Elem = F>, T, D: Distance<F>>
 
 impl<'a, F: Float + Debug, R: Rng + Clone, DA: Data<Elem = F>, T, D: 'a + Distance<F> + Debug>
     FitWith<'a, ArrayBase<DA, Ix2>, T, IncrKMeansError<KMeans<F, D>>>
-    for KMeansValidParams<F, R, D>
+    for KMeansValidParams<'a, F, R, D>
 {
     type ObjectIn = Option<KMeans<F, D>>;
     type ObjectOut = KMeans<F, D>;

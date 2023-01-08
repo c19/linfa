@@ -106,25 +106,33 @@ impl<F: Float> EMD<F> {
 impl<F: Float> Distance<F> for EMD<F> {
     #[inline]
     fn distance<D: Dimension>(&self, a: ArrayView<F, D>, b: ArrayView<F, D>) -> F {
-        let mut u64_a: Vec<u64> = a.iter().map(|one| (*one * Float::cast(1_0000_0000.0)).as_()).map(|one| one as u64).collect();
-        let mut u64_b: Vec<u64> = b.iter().map(|one| (*one * Float::cast(1_0000_0000.0)).as_()).map(|one| one as u64).collect();
+        let mut u64_a: Vec<u64> = a
+            .iter()
+            .map(|one| (*one * Float::cast(1000_0000.0)).as_())
+            .map(|one| one as u64)
+            .collect();
+        let mut u64_b: Vec<u64> = b
+            .iter()
+            .map(|one| (*one * Float::cast(1000_0000.0)).as_())
+            .map(|one| one as u64)
+            .collect();
         // Wasserstein only defined when a and b sums the same.
         // this makes up the differences caused by f64 to u64 conversion
-        let a_sum:u64 = u64_a.iter().sum();
-        let b_sum:u64 = u64_b.iter().sum();
+        let a_sum: u64 = u64_a.iter().sum();
+        let b_sum: u64 = u64_b.iter().sum();
         if a_sum > b_sum {
             let delta = a_sum - b_sum;
             u64_b[0] += delta;
-        }else {
+        } else {
             let delta = b_sum - a_sum;
             u64_a[0] += delta;
         }
-        match wasserstein_1d(u64_a, u64_b){
-            Ok(u64_dist) => Float::cast((u64_dist as f64 )/ 1_0000_0000.0),
+        match wasserstein_1d(u64_a, u64_b) {
+            Ok(u64_dist) => Float::cast((u64_dist as f64) / 1000_0000.0),
             Err(err) => {
                 println!("{}", err);
                 panic!();
-            },
+            }
         }
     }
 }
