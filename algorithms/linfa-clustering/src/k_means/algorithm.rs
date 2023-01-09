@@ -242,17 +242,14 @@ impl<'a, F: Float, R: Rng + Clone, DA: Data<Elem = F>, T, D: Distance<F>>
         let n_runs = self.n_runs();
 
         for n in 0..n_runs {
-            println!("{n} run");
             let mut centroids =
                 self.init_method()
                     .run(self.dist_fn(), self.n_clusters(), observations, &mut rng);
-            println!("init completed");
             if let Some(notify) = self.progress_notify {
                 notify(ProgressType::InitDone);
             }
             let mut n_iter = 0;
             let inertia = loop {
-                println!("{n_iter} iter");
                 update_memberships_and_dists(
                     self.dist_fn(),
                     &centroids,
@@ -260,20 +257,18 @@ impl<'a, F: Float, R: Rng + Clone, DA: Data<Elem = F>, T, D: Distance<F>>
                     &mut memberships,
                     &mut dists,
                 );
-                println!("membership updated");
                 let new_centroids = compute_centroids(&centroids, &observations, &memberships);
-                println!("centroids computed");
+                let dists_sum = dists.sum();
                 let distance = self
                     .dist_fn()
                     .distance(centroids.view(), new_centroids.view());
                 centroids = new_centroids;
                 n_iter += 1;
                 if let Some(notify) = self.progress_notify {
-                    notify(ProgressType::IterationDone(n_iter));
+                    notify(ProgressType::IterationDone(n, n_iter, format!("{}",distance).parse().unwrap(), format!("{}",dists_sum).parse().unwrap()));
                 }
-                println!("centroids distance change: {distance}");
                 if distance < self.tolerance() || n_iter == self.max_n_iterations() as usize {
-                    break dists.sum();
+                    break dists_sum;
                 }
             };
 
@@ -337,7 +332,7 @@ impl<'a, F: Float + Debug, R: Rng + Clone, DA: Data<Elem = F>, T, D: 'a + Distan
                     let mut dists = Array1::zeros(n_samples);
                     // Initial centroids derived from the first batch by running the init algorithm
                     // n_runs times and taking the centroids with the lowest inertia
-                    (0..self.n_runs())
+                    let inited = (0..self.n_runs())
                         .map(|_| {
                             let centroids = self.init_method().run(
                                 self.dist_fn(),
@@ -356,7 +351,11 @@ impl<'a, F: Float + Debug, R: Rng + Clone, DA: Data<Elem = F>, T, D: 'a + Distan
                             }
                         })
                         .unwrap()
-                        .0
+                        .0;
+                    if let Some(notify) = self.progress_notify{
+                        notify(ProgressType::InitDone);
+                    }
+                    inited
                 };
                 KMeans {
                     centroids,
@@ -388,6 +387,9 @@ impl<'a, F: Float + Debug, R: Rng + Clone, DA: Data<Elem = F>, T, D: 'a + Distan
             .distance(model.centroids.view(), new_centroids.view());
         model.centroids = new_centroids;
 
+        if let Some(notify) = self.progress_notify{
+            notify(ProgressType::IterationDone(0, 0, format!("{}",dist).parse().unwrap(), format!("{}",model.inertia).parse().unwrap()));
+        }
         if dist < self.tolerance() {
             Ok(model)
         } else {

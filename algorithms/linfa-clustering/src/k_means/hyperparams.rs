@@ -11,7 +11,8 @@ use serde_crate::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug)]
 pub enum ProgressType {
     InitDone,
-    IterationDone(usize),
+    // nth run, nth iteration, centroids distance change, average in cluster distance
+    IterationDone(usize, usize, f64, f64),
 }
 
 pub type ProgressCallbackFn = dyn Fn(ProgressType);
