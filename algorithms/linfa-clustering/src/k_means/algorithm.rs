@@ -352,11 +352,11 @@ impl<'a, F: Float + Debug, R: Rng + Clone, DA: Data<Elem = F>, T, D: 'a + Distan
                         })
                         .unwrap()
                         .0;
-                    if let Some(notify) = self.progress_notify{
-                        notify(ProgressType::InitDone);
-                    }
-                    inited
+                        inited
                 };
+                if let Some(notify) = self.progress_notify{
+                    notify(ProgressType::InitDone);
+                }
                 KMeans {
                     centroids,
                     cluster_count: Array1::zeros(self.n_clusters()),
