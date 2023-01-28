@@ -45,7 +45,7 @@ noisy_float = "0.2.0"
 [dev-dependencies]
 ndarray-npy = { version = "0.8", default-features = false }
 linfa-datasets = { version = "0.6.1", path = "../../datasets", features = ["generate"] }
-criterion = "0.4.0"
+criterion = { version = "0.4.0", features = [ "html_reports" ]}
 serde_json = "1"
 approx = "0.4"
 lax = "0.15.0"
@@ -65,4 +65,8 @@ harness = false
 
 [[bench]]
 name = "gaussian_mixture"
+harness = false
+
+[[bench]]
+name = "emd"
 harness = false
