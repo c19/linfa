@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 use linfa::Float;
 use ndarray::{Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix2, Zip};
 use ndarray_stats::DeviationExt;
@@ -101,14 +103,20 @@ pub struct EMD;
 impl<F: Float> Distance<F> for EMD {
     #[inline]
     fn distance<D: Dimension>(&self, a: ArrayView<F, D>, b: ArrayView<F, D>) -> F {
+        let a_sum = a.sum();
+        let multiplier_a =  i32::MAX / (a_sum.ceil().as_() as i32 * 100);
+        let b_sum = b.sum();
+        let multiplier_b =  i32::MAX / (b_sum.ceil().as_() as i32 * 100);
+        let multiplier = min(multiplier_a, multiplier_b);
+        assert!(multiplier > 1);
         let mut u64_a: Vec<u64> = a
             .iter()
-            .map(|one| (*one * Float::cast(1000_0000.0)).as_())
+            .map(|one| (*one * Float::cast(multiplier)).as_())
             .map(|one| one as u64)
             .collect();
         let mut u64_b: Vec<u64> = b
             .iter()
-            .map(|one| (*one * Float::cast(1000_0000.0)).as_())
+            .map(|one| (*one * Float::cast(multiplier)).as_())
             .map(|one| one as u64)
             .collect();
         // Wasserstein only defined when a and b sums the same.
@@ -123,7 +131,7 @@ impl<F: Float> Distance<F> for EMD {
             u64_a[0] += delta;
         }
         match wasserstein_1d(u64_a, u64_b) {
-            Ok(u64_dist) => Float::cast((u64_dist as f64) / 1000_0000.0),
+            Ok(u64_dist) => Float::cast((u64_dist as f64) / multiplier as f64),
             Err(err) => {
                 println!("{}", err);
                 panic!();
