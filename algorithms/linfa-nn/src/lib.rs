@@ -34,6 +34,7 @@ mod kdtree;
 mod linear;
 
 pub mod distance;
+pub mod emd;
 
 pub use crate::{balltree::*, kdtree::*, linear::*};
 

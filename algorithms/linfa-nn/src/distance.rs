@@ -1,9 +1,8 @@
-use std::cmp::min;
-
 use linfa::Float;
 use ndarray::{Array2, ArrayBase, ArrayView, Axis, Data, Dimension, Ix2, Zip};
 use ndarray_stats::DeviationExt;
-use wasserstein::wasserstein::wasserstein_1d;
+
+use crate::emd::emd;
 /// A distance function that can be used in spatial algorithms such as nearest neighbour.
 pub trait Distance<F: Float>: Clone + Send + Sync + Unpin {
     /// Computes the distance between two points. For most spatial algorithms to work correctly,
@@ -103,40 +102,7 @@ pub struct EMD;
 impl<F: Float> Distance<F> for EMD {
     #[inline]
     fn distance<D: Dimension>(&self, a: ArrayView<F, D>, b: ArrayView<F, D>) -> F {
-        let a_sum = a.sum();
-        let multiplier_a =  i32::MAX / (a_sum.ceil().as_() as i32 * 100);
-        let b_sum = b.sum();
-        let multiplier_b =  i32::MAX / (b_sum.ceil().as_() as i32 * 100);
-        let multiplier = min(multiplier_a, multiplier_b);
-        assert!(multiplier > 1);
-        let mut u64_a: Vec<u64> = a
-            .iter()
-            .map(|one| (*one * Float::cast(multiplier)).as_())
-            .map(|one| one as u64)
-            .collect();
-        let mut u64_b: Vec<u64> = b
-            .iter()
-            .map(|one| (*one * Float::cast(multiplier)).as_())
-            .map(|one| one as u64)
-            .collect();
-        // Wasserstein only defined when a and b sums the same.
-        // this makes up the differences caused by f64 to u64 conversion
-        let a_sum: u64 = u64_a.iter().sum();
-        let b_sum: u64 = u64_b.iter().sum();
-        if a_sum > b_sum {
-            let delta = a_sum - b_sum;
-            u64_b[0] += delta;
-        } else {
-            let delta = b_sum - a_sum;
-            u64_a[0] += delta;
-        }
-        match wasserstein_1d(u64_a, u64_b) {
-            Ok(u64_dist) => Float::cast((u64_dist as f64) / multiplier as f64),
-            Err(err) => {
-                println!("{}", err);
-                panic!();
-            }
-        }
+        emd(&a, &b)
     }
 }
 
