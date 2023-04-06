@@ -382,9 +382,15 @@ impl<'a, F: Float + Debug, R: Rng + Clone, DA: Data<Elem = F>, T, D: 'a + Distan
             &mut model.cluster_count,
         );
         model.inertia = dists.sum() / F::cast(n_samples);
-        let dist = self
+        
+        let dist = Zip::from(model.centroids.view().axis_iter(Axis(0)))
+        .and(new_centroids.view().axis_iter(Axis(0)))
+        .map_collect(|old_centroid, new_centroid| {
+                self
             .dist_fn()
-            .distance(model.centroids.view(), new_centroids.view());
+            .distance(old_centroid, new_centroid)
+        }).sum();
+
         model.centroids = new_centroids;
 
         if let Some(notify) = self.progress_notify{
