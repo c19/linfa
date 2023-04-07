@@ -258,17 +258,23 @@ impl<'a, F: Float, R: Rng + Clone, DA: Data<Elem = F>, T, D: Distance<F>>
                     &mut dists,
                 );
                 let new_centroids = compute_centroids(&centroids, &observations, &memberships);
-                let dists_sum = dists.sum();
-                let distance = self
-                    .dist_fn()
-                    .distance(centroids.view(), new_centroids.view());
+                let avg_dist = dists.sum() / F::cast(n_samples);
+
+                let distance = Zip::from(centroids.axis_iter(Axis(0)))
+                        .and(new_centroids.axis_iter(Axis(0)))
+                        .map_collect(|old_centroid, new_centroid| {
+                                self
+                            .dist_fn()
+                            .distance(old_centroid, new_centroid)
+                        }).sum() / F::cast(centroids.shape()[0]);
+                
                 centroids = new_centroids;
                 n_iter += 1;
                 if let Some(notify) = self.progress_notify {
-                    notify(ProgressType::IterationDone(n, n_iter, format!("{}",distance).parse().unwrap(), format!("{}",dists_sum).parse().unwrap()));
+                    notify(ProgressType::IterationDone(n, n_iter, format!("{}",distance).parse().unwrap(), format!("{}",avg_dist).parse().unwrap()));
                 }
                 if distance < self.tolerance() || n_iter == self.max_n_iterations() as usize {
-                    break dists_sum;
+                    break avg_dist;
                 }
             };
 
@@ -389,7 +395,7 @@ impl<'a, F: Float + Debug, R: Rng + Clone, DA: Data<Elem = F>, T, D: 'a + Distan
                 self
             .dist_fn()
             .distance(old_centroid, new_centroid)
-        }).sum();
+        }).sum() / F::cast(n_samples);
 
         model.centroids = new_centroids;
 
